@@ -23,6 +23,7 @@ class GamePolicy
             Role::DEVELOPER_JUNIOR,
 
             Role::ARTIST,
+            Role::MEDIA_EDITOR,
 
             Role::EVENT_MANAGER,
             Role::PLAYTEST_MANAGER,
@@ -31,12 +32,21 @@ class GamePolicy
         ]);
     }
 
+    public function manageContributionCredit(User $user, Game $game): bool
+    {
+        return $user->hasAnyRole([
+            Role::DEVELOPER,
+            Role::ARTIST,
+            Role::PLAYTEST_MANAGER,
+        ]);
+    }
+
     public function viewAny(?User $user): bool
     {
         return true;
     }
 
-    public function viewDetails(User $user, Game $game): bool
+    public function viewContributionCredit(User $user, Game $game): bool
     {
         return $user->hasAnyRole([
             Role::GAME_HASH_MANAGER,
@@ -46,9 +56,56 @@ class GamePolicy
             Role::DEVELOPER_JUNIOR,
 
             Role::ARTIST,
+            Role::EVENT_MANAGER,
+            Role::PLAYTEST_MANAGER,
+        ]);
+    }
+
+    public function viewDetails(User $user, ?Game $game = null): bool
+    {
+        return $user->hasAnyRole([
+            Role::ROOT,
+            Role::ADMINISTRATOR,
+            Role::MODERATOR,
+            Role::GAME_HASH_MANAGER,
+            Role::GAME_EDITOR,
+
+            Role::DEVELOPER,
+            Role::DEVELOPER_JUNIOR,
+
+            Role::ARTIST,
 
             Role::EVENT_MANAGER,
+            Role::RELEASE_MANAGER,
         ]);
+    }
+
+    public function viewDeveloperInterest(User $user, Game $game): bool
+    {
+        $hasActivePrimaryClaim = $user->loadMissing('achievementSetClaims')
+            ->achievementSetClaims()
+            ->whereGameId($game->id)
+            ->primaryClaim()
+            ->active()
+            ->exists();
+
+        // Devs and JrDevs can see the page, but they need to have an
+        // active primary claim first. Collaborators for the game
+        // cannot open the page.
+        if ($hasActivePrimaryClaim) {
+            return true;
+        }
+
+        // Mods and admins can see everything.
+        return $user->hasAnyRole([
+            Role::ADMINISTRATOR,
+            Role::MODERATOR,
+        ]);
+    }
+
+    public function viewModifications(User $user): bool
+    {
+        return $this->manage($user);
     }
 
     public function view(?User $user, Game $game): bool
@@ -71,6 +128,19 @@ class GamePolicy
         ]);
     }
 
+    public function createForumTopic(User $user, Game $game): bool
+    {
+        if ($game->forum_topic_id) {
+            return false;
+        }
+
+        return $user->hasAnyRole([
+            Role::DEVELOPER,
+            Role::FORUM_MANAGER,
+            Role::MODERATOR,
+        ]);
+    }
+
     public function update(User $user, Game $game): bool
     {
         $canAlwaysUpdate = $user->hasAnyRole([
@@ -78,6 +148,7 @@ class GamePolicy
             Role::GAME_EDITOR,
             Role::DEVELOPER,
             Role::ARTIST,
+            Role::MEDIA_EDITOR,
         ]);
 
         if ($canAlwaysUpdate) {
@@ -150,6 +221,10 @@ class GamePolicy
                 'screenshots',
             ],
 
+            Role::MEDIA_EDITOR => [
+                'screenshots',
+            ],
+
             Role::ARTIST => [
                 'banner',
                 'image_icon_asset_path',
@@ -185,71 +260,6 @@ class GamePolicy
         // If any of the user's roles allow updating the specified field, return true.
         // Otherwise, they can't edit the field.
         return in_array($fieldName, $allowedFieldsForUser, true);
-    }
-
-    public function createForumTopic(User $user, Game $game): bool
-    {
-        if ($game->forum_topic_id) {
-            return false;
-        }
-
-        return $user->hasAnyRole([
-            Role::DEVELOPER,
-            Role::FORUM_MANAGER,
-            Role::MODERATOR,
-        ]);
-    }
-
-    public function viewModifications(User $user): bool
-    {
-        return $this->manage($user);
-    }
-
-    public function viewContributionCredit(User $user, Game $game): bool
-    {
-        return $user->hasAnyRole([
-            Role::GAME_HASH_MANAGER,
-            Role::GAME_EDITOR,
-
-            Role::DEVELOPER,
-            Role::DEVELOPER_JUNIOR,
-
-            Role::ARTIST,
-            Role::EVENT_MANAGER,
-            Role::PLAYTEST_MANAGER,
-        ]);
-    }
-
-    public function manageContributionCredit(User $user, Game $game): bool
-    {
-        return $user->hasAnyRole([
-            Role::DEVELOPER,
-            Role::ARTIST,
-            Role::PLAYTEST_MANAGER,
-        ]);
-    }
-
-    public function viewDeveloperInterest(User $user, Game $game): bool
-    {
-        $hasActivePrimaryClaim = $user->loadMissing('achievementSetClaims')
-            ->achievementSetClaims()
-            ->whereGameId($game->id)
-            ->primaryClaim()
-            ->active()
-            ->exists();
-
-        // Devs and JrDevs can see the page, but they need to have an
-        // active primary claim first. Collaborators for the game
-        // cannot open the page.
-        if ($hasActivePrimaryClaim) {
-            return true;
-        }
-
-        // Mods and admins can see everything.
-        return $user->hasAnyRole([
-            Role::ADMINISTRATOR,
-            Role::MODERATOR,
-        ]);
     }
 
     public static function canDeveloperJuniorUpdateGame(User $user, Game $game): bool

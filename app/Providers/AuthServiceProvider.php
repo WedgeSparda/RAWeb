@@ -102,6 +102,7 @@ class AuthServiceProvider extends ServiceProvider
             Role::ARTIST,
             Role::WRITER,
             Role::GAME_EDITOR,
+            Role::MEDIA_EDITOR,
         ]));
 
         /*

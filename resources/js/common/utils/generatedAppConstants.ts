@@ -83,6 +83,7 @@ export const UserRole = {
     NEWS_MANAGER: 'news-manager',
     EVENT_MANAGER: 'event-manager',
     PLAYTEST_MANAGER: 'playtest-manager',
+    MEDIA_EDITOR: 'media-editor',
     CHEAT_INVESTIGATOR: 'cheat-investigator',
     FOUNDER: 'founder',
     ARCHITECT: 'architect',
